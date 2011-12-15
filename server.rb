@@ -6,7 +6,7 @@ require 'yaml'
 set :error_404_file, File.dirname(__FILE__) + '/404.html'
 
 get "/download/:token/:expire/:filename" do
-  @secret = YAML::parse( File.open("config/secret.yml") ).select('/secret')[0].value
+  @secret = YAML.load_file("config/secret.yml")['secret']
   
   if params[:token] == Digest::MD5.hexdigest(@secret + params[:filename] + params[:expire])
     headers \
