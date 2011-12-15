@@ -9,7 +9,6 @@ Steps to install:
 3. Rename Capfile.example to Capfile and fill your server parameters.
 
 
-
 /etc/init.d/file_server looks like this:
 
     #! /bin/sh

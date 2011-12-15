@@ -1,0 +1,95 @@
+$:.unshift(File.expand_path('./lib', ENV['rvm_path'])) # Add RVM's lib directory to the load path.
+require "rvm/capistrano"                  # Load RVM's capistrano plugin.
+require 'bundler/capistrano'
+
+set :stages, %w(production staging)
+set :default_stage, "staging"
+
+set :application, "file_server"
+set :repository,  "git link here"
+
+set :rvm_ruby_string, 'ruby-1.9.2-p290@gml'
+set :rvm_type, :user
+
+set :deploy_to, "/var/www/file_server"
+set :deploy_via, :remote_cache
+set :branch, 'develop'
+set :scm, :git
+set :scm_verbose, true
+set :use_sudo, false
+set :delayed_job_params, "-n 20"
+set :db_name_prefix, application.downcase.gsub(/[^a-z]/, '-')
+set :unicorn_conf, "#{deploy_to}/current/config/unicorn.rb"
+set :unicorn_pid, "#{deploy_to}/shared/unicorn.pid"
+set :resque_pid, "#{deploy_to}/shared/pids/resque.pid"
+set :unicorn_script, "/etc/init.d/file_server"
+
+require 'capistrano/ext/multistage'
+
+default_run_options[:pty] = true
+ssh_options[:paranoid] = false
+ssh_options[:user] = "deploy"
+ssh_options[:forward_agent] = true
+ssh_options[:port] = 2123
+
+role :app, "127.0.0.1"
+role :web, "127.0.0.1"
+role :db,  "127.0.0.1", :primary => true
+
+namespace :deploy do
+  task :restart, :roles => :app do
+    run "if [ -f #{unicorn_pid} ]; then #{unicorn_script} restart; else #{unicorn_script} start; fi"
+  end
+  
+  task :start do
+    run "#{unicorn_script} start"
+  end
+  task :stop do
+    run "#{unicorn_script} stop"
+  end
+  
+  namespace :unicorn do
+    desc "Remove unicron pid file"
+    task :cleanup do
+      run "rm #{unicorn_pid}"
+    end
+  end
+  
+  desc "Make symlinks"
+  task :symlink_configs do
+    run "ln -nfs #{shared_path}/config/secret.yml #{release_path}/config/secret.yml"
+    run "ln -nfs #{shared_path}/config/unicorn.rb #{release_path}/config/unicorn.rb"
+  end
+  
+  namespace :gems do
+    desc "Install required gems"
+    task :install do
+      run <<-CMD
+        cd #{latest_release};
+        #{sudo} rake gems:install;
+      CMD
+    end
+  end
+  
+  task :create_shared_dirs do
+    run <<-CMD
+      mkdir #{shared_path}/config;
+    CMD
+    #mkdir #{shared_path}/.bundle;
+  end
+  
+  task :create_log_files do
+    run "touch #{shared_path}/log/development.log #{shared_path}/log/production.log #{shared_path}/log/test.log"
+  end
+end
+
+namespace :logs do
+  task :watch do
+    stream("tail -f #{shared_path}/log/production.log")
+  end
+end
+
+after "deploy:update_code", "deploy:symlink_configs"
+after "deploy:setup", "deploy:create_shared_dirs"
+after "deploy:setup", "deploy:create_log_files"
+
