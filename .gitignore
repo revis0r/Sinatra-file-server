@@ -1,1 +1,3 @@
-secret.yml
+config/secret.yml
+Capfile
+config/unicorn.rb
