@@ -4,9 +4,12 @@ Simple sinatra file server. Prepared to use with rvm, capistrano and unicorn.
 
 Steps to install:
 -----------------
-1. gem install sinatra
-2. Rename secret.yml.example to secret.yml and set your secret variable.
-3. Rename Capfile.example to Capfile and fill your server parameters.
+1. Run on production server: gem install sinatra unicorn 
+2. Rename Capfile.example to Capfile and set your server parameters.
+3. On local computer: cap setup && cap deploy
+4. Don't forget to copy current/config/secret.yml.example to shared/config/secret.yml on your production server and set your secret variable.
+5. On production server copy current/config/unicorn.rb.example to shared/config/unicorn.rb.
+6. cap deploy:start
 
 
 /etc/init.d/file_server looks like this:
