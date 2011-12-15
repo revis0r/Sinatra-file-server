@@ -120,3 +120,35 @@ Steps to install:
     	exit 3
     	;;
     esac
+
+
+Nginx example configuration:
+
+    server {
+        listen         80;
+        server_name    download.example.com;
+        root           /var/www/file_server/current/public;
+        try_files      $uri @unicorn;
+        charset        UTF-8;
+        server_tokens  off;
+        #gzip             on;
+        #gzip_min_length  10;
+        # gzip_proxied     expired no-cache no-store private auth;
+    
+
+        location ~* ^/private/(.*)$ {
+        	internal;
+	
+        	set $private_url http://example.com/private_area/$1;
+        	proxy_max_temp_file_size 0;
+        	proxy_pass $private_url;
+        	#proxy_ignore_headers X-Accel-Redirect;
+        }
+
+        location @unicorn {
+            proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header  Host $http_host;
+            proxy_pass        http://unix:/var/www/file_server/shared/unicorn.sock;
+            proxy_redirect    off;
+        }
+    }
